@@ -82,7 +82,7 @@ namespace Nexus.Writers.Tests
 
             using var famosFile = FamosFile.Open(actualFilePaths.First());
 
-            Assert.True(famosFile.Fields.Count == 1);
+            Assert.Single(famosFile.Fields);
 
             var metadata = famosFile.Groups[0];
             Assert.Equal("Metadata", metadata.Name);
