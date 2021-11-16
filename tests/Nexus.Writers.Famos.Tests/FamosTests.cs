@@ -10,7 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Nexus.Writers.Famos.Tests
+namespace Nexus.Writers.Tests
 {
     public class FamosTests : IClassFixture<DataWriterFixture>
     {
@@ -92,7 +92,6 @@ namespace Nexus.Writers.Famos.Tests
             Assert.Equal(_fixture.Catalogs[0].Id, catalog1.Name);
             var representations1 = _fixture.Catalogs[0].Resources.SelectMany(resource => resource.Representations).ToList();
             Assert.Equal(representations1.Count, catalog1.Channels.Count);
-            var properties1 = catalog1.PropertyInfo.Properties;
             AssertProperties(_fixture.Catalogs[0].Properties, catalog1.PropertyInfo.Properties);
             AssertProperties(_fixture.Catalogs[0].Resources[0].Properties, catalog1.Channels[0].PropertyInfo.Properties);
             AssertProperties(_fixture.Catalogs[0].Resources[0].Properties, catalog1.Channels[1].PropertyInfo.Properties);

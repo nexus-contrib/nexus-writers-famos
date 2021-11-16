@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Nexus.Writers.Famos {
+namespace Nexus.Writers {
     using System;
     
     

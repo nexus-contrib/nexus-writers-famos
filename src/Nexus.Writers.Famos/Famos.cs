@@ -8,13 +8,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Nexus.Writers.Famos
+namespace Nexus.Writers
 {
     [DataWriterFormatName("imc FAMOS v2 (*.dat)")]
     [ExtensionDescription("Writes data into Famos files.")]
     public class Famos : IDataWriter
     {
-        #region "Fields"
+        #region Fields
 
         private FamosFile _famosFile = null!;
         private TimeSpan _lastSamplePeriod;
@@ -27,7 +27,7 @@ namespace Nexus.Writers.Famos
 
         #endregion
 
-        #region "Methods"
+        #region Methods
 
         public Task SetContextAsync(
             DataWriterContext context,
@@ -76,9 +76,8 @@ namespace Nexus.Writers.Famos
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var catalog = catalogItemGroup.Key;
-
                     // file -> catalog
+                    var catalog = catalogItemGroup.Key;
                     var catalogGroup = new FamosFileGroup(catalog.Id);
 
                     catalogGroup.PropertyInfo = new FamosFilePropertyInfo();
@@ -93,7 +92,6 @@ namespace Nexus.Writers.Famos
 
                     famosFile.Groups.Add(catalogGroup);
 
-                    // for each context group
                     if (totalLength * (double)Famos.SizeOf(NexusDataType.FLOAT64) > 2 * Math.Pow(10, 9))
                         throw new Exception(ErrorMessage.FamosWriter_DataSizeExceedsLimit);
 
@@ -127,6 +125,7 @@ namespace Nexus.Writers.Famos
                     .GroupBy(request => request.CatalogItem.Catalog)
                     .ToList();
 
+                var processed = 0;
                 var field = _famosFile.Fields.First();
 
                 _famosFile.Edit(writer =>
@@ -134,17 +133,20 @@ namespace Nexus.Writers.Famos
                     foreach (var requestGroup in requestGroups)
                     {
                         var catalog = requestGroup.Key;
-                        var requestGroupArray = requestGroup.ToArray();
+                        var writeRequests = requestGroup.ToArray();
 
-                        for (int i = 0; i < requestGroupArray.Length; i++)
+                        for (int i = 0; i < writeRequests.Length; i++)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
 
                             var component = field.Components[i];
-                            var data = requestGroupArray[i].Data;
+                            var data = writeRequests[i].Data;
 
-                            _famosFile.WriteSingle<double>(writer, component, (int)offset, data.Span);
+                            _famosFile.WriteSingle(writer, component, (int)offset, data.Span);
                         }
+
+                        processed++;
+                        progress.Report((double)processed / requests.Length);
                     }
                 });
             });
