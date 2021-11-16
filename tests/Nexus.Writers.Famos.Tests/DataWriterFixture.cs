@@ -19,7 +19,7 @@ namespace Nexus.Writers.Tests
             };
 
             var resourceBuilder1 = new ResourceBuilder(id: "resource1")
-                .WithUnit("°C")
+                .WithUnit("deg C")
                 .WithGroups("group1")
                 .AddRepresentations(representations1);
 
