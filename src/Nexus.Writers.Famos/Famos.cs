@@ -12,7 +12,7 @@ namespace Nexus.Writers.Famos
 {
     [DataWriterFormatName("imc FAMOS v2 (*.dat)")]
     [ExtensionDescription("Writes data into Famos files.")]
-    public class FamosDataWriter : IDataWriter
+    public class Famos : IDataWriter
     {
         #region "Fields"
 
@@ -94,7 +94,7 @@ namespace Nexus.Writers.Famos
                     famosFile.Groups.Add(catalogGroup);
 
                     // for each context group
-                    if (totalLength * (double)FamosDataWriter.SizeOf(NexusDataType.FLOAT64) > 2 * Math.Pow(10, 9))
+                    if (totalLength * (double)Famos.SizeOf(NexusDataType.FLOAT64) > 2 * Math.Pow(10, 9))
                         throw new Exception(ErrorMessage.FamosWriter_DataSizeExceedsLimit);
 
                     // file -> catalog -> resources

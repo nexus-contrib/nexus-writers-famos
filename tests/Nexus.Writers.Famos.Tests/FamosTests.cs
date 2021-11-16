@@ -12,11 +12,11 @@ using Xunit;
 
 namespace Nexus.Writers.Famos.Tests
 {
-    public class FamosDataWriterTests : IClassFixture<DataWriterFixture>
+    public class FamosTests : IClassFixture<DataWriterFixture>
     {
         private DataWriterFixture _fixture;
 
-        public FamosDataWriterTests(DataWriterFixture fixture)
+        public FamosTests(DataWriterFixture fixture)
         {
             _fixture = fixture;
         }
@@ -25,7 +25,7 @@ namespace Nexus.Writers.Famos.Tests
         public async Task CanWriteFiles()
         {
             var targetFolder = _fixture.GetTargetFolder();
-            var dataWriter = new FamosDataWriter() as IDataWriter;
+            var dataWriter = new Famos() as IDataWriter;
 
             var context = new DataWriterContext(
                 ResourceLocator: new Uri(targetFolder),
