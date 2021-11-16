@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace Nexus.Writers.Famos
 {
     [DataWriterFormatName("imc FAMOS v2 (*.dat)")]
-    [ExtensionIdentification("Famos", "Famos .dat writer", "Writes data into Famos files.")]
+    [ExtensionDescription("Writes data into Famos files.")]
     public class FamosDataWriter : IDataWriter
     {
         #region "Fields"
