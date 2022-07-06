@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -29,10 +30,10 @@ namespace Nexus.Writers.Tests
 
             var context = new DataWriterContext(
                 ResourceLocator: new Uri(targetFolder),
-                Configuration: new Dictionary<string, string>(),
-                Logger: NullLogger.Instance);
+                SystemConfiguration: default!,
+                RequestConfiguration: default!);
 
-            await dataWriter.SetContextAsync(context, CancellationToken.None);
+            await dataWriter.SetContextAsync(context, NullLogger.Instance, CancellationToken.None);
 
             var begin = new DateTime(2020, 01, 01, 0, 0, 0, DateTimeKind.Utc);
             var samplePeriod = TimeSpan.FromSeconds(1);
@@ -104,18 +105,11 @@ namespace Nexus.Writers.Tests
             AssertProperties(_fixture.Catalogs[1].Properties, catalog2.PropertyInfo.Properties);
             AssertProperties(_fixture.Catalogs[1].Resources[0].Properties, catalog2.Channels[0].PropertyInfo.Properties);
 
-            void AssertProperties(IReadOnlyDictionary<string, string> expected, List<FamosFileProperty> actual)
+            void AssertProperties(JsonElement? expected, List<FamosFileProperty> actual)
             {
-                Assert.Equal(expected.Count, actual.Count);
-
-                for (int i = 0; i < actual.Count; i++)
-                {
-                    var key = actual[i].Name;
-                    var value = actual[i].Value;
-
-                    var match = expected[key];
-                    Assert.Equal(match, value);
-                }
+                var expectedAsString = JsonSerializer.Serialize(expected, new JsonSerializerOptions { WriteIndented = true });
+                Assert.Single(actual);
+                Assert.Equal(expectedAsString, actual[0].Value);
             }
         }
     }
