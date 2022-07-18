@@ -1,29 +1,47 @@
 ﻿using ImcFamosFile;
+using Microsoft.Extensions.Logging;
 using Nexus.DataModel;
 using Nexus.Extensibility;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Nexus.Writers
 {
     [DataWriterFormatName("imc FAMOS v2 (*.dat)")]
-    [ExtensionDescription("Writes data into Famos files.")]
+    [ExtensionDescription(
+        "Writes data into Famos files.",
+        "https://github.com/Apollo3zehn/nexus-sources-famos",
+        "https://github.com/Apollo3zehn/nexus-sources-famos")]
     public class Famos : IDataWriter
     {
         #region Fields
 
-        private FamosFile _famosFile = null!;
+        private FamosFile _famosFile = default!;
         private TimeSpan _lastSamplePeriod;
+        private JsonSerializerOptions _serializerOptions;
 
         #endregion
 
         #region Properties
 
-        private DataWriterContext Context { get; set; } = null!;
+        private DataWriterContext Context { get; set; } = default!;
+
+        #endregion
+
+        #region Constructors
+
+        public Famos()
+        {
+            _serializerOptions = new JsonSerializerOptions()
+            {
+                WriteIndented = true
+            };
+        }
 
         #endregion
 
@@ -31,6 +49,7 @@ namespace Nexus.Writers
 
         public Task SetContextAsync(
             DataWriterContext context,
+            ILogger logger,
             CancellationToken cancellationToken)
         {
             this.Context = context;
@@ -82,12 +101,11 @@ namespace Nexus.Writers
 
                     catalogGroup.PropertyInfo = new FamosFilePropertyInfo();
 
-                    if (catalog.Properties is not null)
+                    if (catalog.Properties.HasValue)
                     {
-                        foreach (var entry in catalog.Properties)
-                        {
-                            catalogGroup.PropertyInfo.Properties.Add(new FamosFileProperty(entry.Key, entry.Value));
-                        }
+                        var key = "properties";
+                        var value = JsonSerializer.Serialize(catalog.Properties.Value, _serializerOptions);
+                        catalogGroup.PropertyInfo.Properties.Add(new FamosFileProperty(key, value));
                     }
 
                     famosFile.Groups.Add(catalogGroup);
@@ -164,9 +182,14 @@ namespace Nexus.Writers
             // component 
             var representationName = $"{catalogItem.Resource.Id}_{catalogItem.Representation.Id}";
 
-            var unit = catalogItem.Resource.Properties is null
-                ? string.Empty
-                : catalogItem.Resource.Properties.GetValueOrDefault("Unit", string.Empty);
+            var unit = string.Empty;
+
+            if (catalogItem.Resource.Properties is not null && 
+                catalogItem.Resource.Properties.Value.TryGetProperty("unit", out var unitElement) &&
+                unitElement.ValueKind == JsonValueKind.String)
+            {
+                unit = unitElement.GetString() ?? string.Empty;
+            }
 
             var calibration = new FamosFileCalibration(false, 1, 0, false, unit);
 
@@ -181,12 +204,13 @@ namespace Nexus.Writers
 
             channel.PropertyInfo = new FamosFilePropertyInfo();
 
-            if (catalogItem.Resource.Properties is not null)
+            var properties = catalogItem.Resource.Properties;
+
+            if (properties.HasValue)
             {
-                foreach (var entry in catalogItem.Resource.Properties)
-                {
-                    channel.PropertyInfo.Properties.Add(new FamosFileProperty(entry.Key, entry.Value));
-                }
+                var key = "properties";
+                var value = JsonSerializer.Serialize(properties.Value, _serializerOptions);
+                channel.PropertyInfo.Properties.Add(new FamosFileProperty(key, value));
             }
 
             field.Components.Add(component);
