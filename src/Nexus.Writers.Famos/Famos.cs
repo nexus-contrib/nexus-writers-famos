@@ -52,7 +52,7 @@ namespace Nexus.Writers
             ILogger logger,
             CancellationToken cancellationToken)
         {
-            this.Context = context;
+            Context = context;
             return Task.CompletedTask;
         }
 
@@ -69,7 +69,7 @@ namespace Nexus.Writers
 
                 var totalLength = filePeriod.Ticks / samplePeriod.Ticks;
                 var dx = samplePeriod.TotalSeconds;
-                var root = this.Context.ResourceLocator.ToPath();
+                var root = Context.ResourceLocator.ToPath();
                 var filePath = Path.Combine(root, $"{fileBegin.ToString("yyyy-MM-ddTHH-mm-ss")}Z_{samplePeriod.ToUnitString()}.dat");
 
                 if (File.Exists(filePath))
@@ -116,7 +116,7 @@ namespace Nexus.Writers
                     // file -> catalog -> resources
                     foreach (var catalogItem in catalogItemGroup)
                     {
-                        var channel = this.PrepareChannel(field, catalogItem, (int)totalLength, fileBegin, dx);
+                        var channel = PrepareChannel(field, catalogItem, (int)totalLength, fileBegin, dx);
                         catalogGroup.Channels.Add(channel);
                     }
                 }
