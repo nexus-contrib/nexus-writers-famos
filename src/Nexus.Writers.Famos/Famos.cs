@@ -23,7 +23,7 @@ namespace Nexus.Writers
 
 private const string DESCRIPTION = @"
 {
-  ""label"": ""imc FAMOS v2 (*.dat)"",
+  ""label"": ""imc FAMOS v2 (*.dat)""
 }
         ";
 
