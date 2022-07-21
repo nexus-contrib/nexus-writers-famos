@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Nexus.Writers
 {
-    [DataWriterFormatName("imc FAMOS v2 (*.dat)")]
+    [DataWriterDescription(DESCRIPTION)]
     [ExtensionDescription(
         "Writes data into Famos files.",
         "https://github.com/Apollo3zehn/nexus-sources-famos",
@@ -20,6 +20,12 @@ namespace Nexus.Writers
     public class Famos : IDataWriter
     {
         #region Fields
+
+private const string DESCRIPTION = @"
+{
+  ""label"": ""imc FAMOS v2 (*.dat)"",
+}
+        ";
 
         private FamosFile _famosFile = default!;
         private TimeSpan _lastSamplePeriod;
