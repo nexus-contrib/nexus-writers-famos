@@ -180,7 +180,7 @@ private const string DESCRIPTION = @"
         private FamosFileChannel PrepareChannel(FamosFileField field, CatalogItem catalogItem, int totalLength, DateTime startDateTme, double dx)
         {
             // component 
-            var representationName = $"{catalogItem.Resource.Id}_{catalogItem.Representation.Id}";
+            var representationName = $"{catalogItem.Resource.Id}_{catalogItem.Representation.Id}{GetRepresentationParameterString(catalogItem.Parameters)}";
 
             var unit = string.Empty;
 
@@ -216,6 +216,19 @@ private const string DESCRIPTION = @"
             field.Components.Add(component);
 
             return channel;
+        }
+
+        private static string? GetRepresentationParameterString(IReadOnlyDictionary<string, string>? parameters)
+        {
+            if (parameters is null)
+                return default;
+            
+            var serializedParameters = parameters
+                .Select(parameter => $"{parameter.Key}={parameter.Value}");
+
+            var parametersString = $"({string.Join(',', serializedParameters)})";
+
+            return parametersString;
         }
 
         private static int SizeOf(NexusDataType dataType)
