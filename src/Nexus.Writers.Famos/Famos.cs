@@ -2,13 +2,7 @@
 using Microsoft.Extensions.Logging;
 using Nexus.DataModel;
 using Nexus.Extensibility;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Nexus.Writers
 {
@@ -107,10 +101,10 @@ private const string DESCRIPTION = @"
 
                     catalogGroup.PropertyInfo = new FamosFilePropertyInfo();
 
-                    if (catalog.Properties.HasValue)
+                    if (catalog.Properties is not null)
                     {
                         var key = "properties";
-                        var value = JsonSerializer.Serialize(catalog.Properties.Value, _serializerOptions);
+                        var value = JsonSerializer.Serialize(catalog.Properties, _serializerOptions);
                         catalogGroup.PropertyInfo.Properties.Add(new FamosFileProperty(key, value));
                     }
 
@@ -191,7 +185,7 @@ private const string DESCRIPTION = @"
             var unit = string.Empty;
 
             if (catalogItem.Resource.Properties is not null && 
-                catalogItem.Resource.Properties.Value.TryGetProperty("unit", out var unitElement) &&
+                catalogItem.Resource.Properties.TryGetValue("unit", out var unitElement) &&
                 unitElement.ValueKind == JsonValueKind.String)
             {
                 unit = unitElement.GetString() ?? string.Empty;
@@ -212,10 +206,10 @@ private const string DESCRIPTION = @"
 
             var properties = catalogItem.Resource.Properties;
 
-            if (properties.HasValue)
+            if (properties is not null)
             {
                 var key = "properties";
-                var value = JsonSerializer.Serialize(properties.Value, _serializerOptions);
+                var value = JsonSerializer.Serialize(properties, _serializerOptions);
                 channel.PropertyInfo.Properties.Add(new FamosFileProperty(key, value));
             }
 
