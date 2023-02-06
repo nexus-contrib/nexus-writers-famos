@@ -1,3 +1,7 @@
+## v1.0.0 - 2023-02-06
+
+A bug was solved which caused wrong data to be written to file if they come from different Nexus catalogs.
+
 ## v1.0.0 - 2022-10-39
 
 This is the first release.

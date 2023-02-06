@@ -148,6 +148,8 @@ private const string DESCRIPTION = @"
 
                 _famosFile.Edit(writer =>
                 {
+                    var absoluteIndex = 0;
+
                     foreach (var requestGroup in requestGroups)
                     {
                         var catalog = requestGroup.Key;
@@ -157,10 +159,12 @@ private const string DESCRIPTION = @"
                         {
                             cancellationToken.ThrowIfCancellationRequested();
 
-                            var component = field.Components[i];
+                            var component = field.Components[absoluteIndex];
                             var data = writeRequests[i].Data;
 
                             _famosFile.WriteSingle(writer, component, (int)offset, data.Span);
+
+                            absoluteIndex++;
                         }
 
                         processed++;
