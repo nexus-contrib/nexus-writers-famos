@@ -1,3 +1,7 @@
+## v1.0.4 - 2023-03-28
+
+There was another integer overflow in one of the dependencies.
+
 ## v1.0.3 - 2023-03-28
 
 Fix wrong runtime.

@@ -9,7 +9,7 @@
     <PackageReference Include="Nexus.Extensibility" Version="1.0.0">
       <ExcludeAssets>runtime;native</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="ImcFamosFile" Version="2.0.4" />
+    <PackageReference Include="ImcFamosFile" Version="2.0.5" />
   </ItemGroup>
 
   <ItemGroup>
