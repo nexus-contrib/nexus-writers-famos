@@ -78,14 +78,15 @@ private const string DESCRIPTION = @"
                 var famosFile = new FamosFileHeader();
 
                 // file
-                var metadataGroup = new FamosFileGroup("Metadata");
-
-                metadataGroup.PropertyInfo = new FamosFilePropertyInfo(new List<FamosFileProperty>()
+                var metadataGroup = new FamosFileGroup("Metadata")
+                {
+                    PropertyInfo = new FamosFilePropertyInfo(new List<FamosFileProperty>()
                 {
                     new FamosFileProperty("system_name", "Nexus"),
                     new FamosFileProperty("date_time", fileBegin.ToString("yyyy-MM-ddTHH-mm-ss") + "Z"),
                     new FamosFileProperty("sample_period", samplePeriod.ToUnitString()),
-                });
+                })
+                };
 
                 famosFile.Groups.Add(metadataGroup);
 
@@ -97,9 +98,11 @@ private const string DESCRIPTION = @"
 
                     // file -> catalog
                     var catalog = catalogItemGroup.Key;
-                    var catalogGroup = new FamosFileGroup(catalog.Id);
 
-                    catalogGroup.PropertyInfo = new FamosFilePropertyInfo();
+                    var catalogGroup = new FamosFileGroup(catalog.Id)
+                    {
+                        PropertyInfo = new FamosFilePropertyInfo()
+                    };
 
                     if (catalog.Properties is not null)
                     {
@@ -110,7 +113,7 @@ private const string DESCRIPTION = @"
 
                     famosFile.Groups.Add(catalogGroup);
 
-                    if (totalLength * (double)Famos.SizeOf(NexusDataType.FLOAT64) > 2 * Math.Pow(10, 9))
+                    if (totalLength * (double)SizeOf(NexusDataType.FLOAT64) > 2 * Math.Pow(10, 9))
                         throw new Exception(ErrorMessage.FamosWriter_DataSizeExceedsLimit);
 
                     // file -> catalog -> resources
@@ -126,7 +129,7 @@ private const string DESCRIPTION = @"
                 //
                 famosFile.Save(filePath, _ => { });
                 _famosFile = FamosFile.OpenEditable(filePath);
-            });
+            }, cancellationToken);
         }
 
         public Task WriteAsync(
@@ -171,7 +174,7 @@ private const string DESCRIPTION = @"
                         progress.Report((double)processed / requests.Length);
                     }
                 });
-            });
+            }, cancellationToken);
         }
 
         public Task CloseAsync(
