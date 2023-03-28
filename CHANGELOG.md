@@ -1,3 +1,7 @@
+## v1.0.2 - 2023-03-28
+
+There was an integer overflow in one of the dependencies.
+
 ## v1.0.1 - 2023-02-06
 
 A bug was solved which caused wrong data to be written to file if they come from different Nexus catalogs.
