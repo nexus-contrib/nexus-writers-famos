@@ -23,7 +23,7 @@ private const string DESCRIPTION = @"
 
         private FamosFile _famosFile = default!;
         private TimeSpan _lastSamplePeriod;
-        private JsonSerializerOptions _serializerOptions;
+        private readonly JsonSerializerOptions _serializerOptions;
 
         #endregion
 
@@ -70,7 +70,7 @@ private const string DESCRIPTION = @"
                 var totalLength = filePeriod.Ticks / samplePeriod.Ticks;
                 var dx = samplePeriod.TotalSeconds;
                 var root = Context.ResourceLocator.ToPath();
-                var filePath = Path.Combine(root, $"{fileBegin.ToString("yyyy-MM-ddTHH-mm-ss")}Z_{samplePeriod.ToUnitString()}.dat");
+                var filePath = Path.Combine(root, $"{fileBegin:yyyy-MM-ddTHH-mm-ss}Z_{samplePeriod.ToUnitString()}.dat");
 
                 if (File.Exists(filePath))
                     throw new Exception($"The file {filePath} already exists. Extending an already existing file with additional resources is not supported.");

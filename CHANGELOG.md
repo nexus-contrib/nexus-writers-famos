@@ -1,3 +1,7 @@
+## v2.0.0-beta.1 - 2023-04-24
+
+Follow Nexus changes.
+
 ## v1.0.4 - 2023-03-28
 
 There was another integer overflow in one of the dependencies.
