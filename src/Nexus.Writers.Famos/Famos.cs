@@ -4,245 +4,233 @@ using Nexus.DataModel;
 using Nexus.Extensibility;
 using System.Text.Json;
 
-namespace Nexus.Writers
+namespace Nexus.Writers;
+
+[DataWriterDescription(DESCRIPTION)]
+[ExtensionDescription(
+    "Writes data into Famos files.",
+    "https://github.com/Apollo3zehn/nexus-sources-famos",
+    "https://github.com/Apollo3zehn/nexus-sources-famos")]
+public class Famos : IDataWriter
 {
-    [DataWriterDescription(DESCRIPTION)]
-    [ExtensionDescription(
-        "Writes data into Famos files.",
-        "https://github.com/Apollo3zehn/nexus-sources-famos",
-        "https://github.com/Apollo3zehn/nexus-sources-famos")]
-    public class Famos : IDataWriter
+    private const string DESCRIPTION = """
     {
-        #region Fields
+        "label": "imc FAMOS v2 (*.dat)"
+    }
+    """;
 
-private const string DESCRIPTION = @"
-{
-  ""label"": ""imc FAMOS v2 (*.dat)""
-}
-        ";
+    private FamosFile _famosFile = default!;
+    private TimeSpan _lastSamplePeriod;
+    private readonly JsonSerializerOptions _serializerOptions;
 
-        private FamosFile _famosFile = default!;
-        private TimeSpan _lastSamplePeriod;
-        private readonly JsonSerializerOptions _serializerOptions;
+    private DataWriterContext Context { get; set; } = default!;
 
-        #endregion
-
-        #region Properties
-
-        private DataWriterContext Context { get; set; } = default!;
-
-        #endregion
-
-        #region Constructors
-
-        public Famos()
+    public Famos()
+    {
+        _serializerOptions = new JsonSerializerOptions()
         {
-            _serializerOptions = new JsonSerializerOptions()
+            WriteIndented = true
+        };
+    }
+
+    public Task SetContextAsync(
+        DataWriterContext context,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        Context = context;
+        return Task.CompletedTask;
+    }
+
+    public Task OpenAsync(
+        DateTime fileBegin,
+        TimeSpan filePeriod,
+        TimeSpan samplePeriod,
+        CatalogItem[] catalogItems,
+        CancellationToken cancellationToken)
+    {
+        return Task.Run(() =>
+        {
+            _lastSamplePeriod = samplePeriod;
+
+            var totalLength = filePeriod.Ticks / samplePeriod.Ticks;
+            var dx = samplePeriod.TotalSeconds;
+            var root = Context.ResourceLocator.ToPath();
+            var filePath = Path.Combine(root, $"{fileBegin:yyyy-MM-ddTHH-mm-ss}Z_{samplePeriod.ToUnitString()}.dat");
+
+            if (File.Exists(filePath))
+                throw new Exception($"The file {filePath} already exists. Extending an already existing file with additional resources is not supported.");
+
+            var famosFile = new FamosFileHeader();
+
+            // file
+            var metadataGroup = new FamosFileGroup("Metadata")
             {
-                WriteIndented = true
+                PropertyInfo = new FamosFilePropertyInfo(
+            [
+                new FamosFileProperty("system_name", "Nexus"),
+                new FamosFileProperty("date_time", fileBegin.ToString("yyyy-MM-ddTHH-mm-ss") + "Z"),
+                new FamosFileProperty("sample_period", samplePeriod.ToUnitString()),
+            ])
             };
-        }
 
-        #endregion
+            famosFile.Groups.Add(metadataGroup);
 
-        #region Methods
+            var field = new FamosFileField(FamosFileFieldType.MultipleYToSingleEquidistantTime);
 
-        public Task SetContextAsync(
-            DataWriterContext context,
-            ILogger logger,
-            CancellationToken cancellationToken)
-        {
-            Context = context;
-            return Task.CompletedTask;
-        }
-
-        public Task OpenAsync(
-            DateTime fileBegin, 
-            TimeSpan filePeriod,
-            TimeSpan samplePeriod, 
-            CatalogItem[] catalogItems, 
-            CancellationToken cancellationToken)
-        {
-            return Task.Run(() =>
+            foreach (var catalogItemGroup in catalogItems.GroupBy(catalogItem => catalogItem.Catalog))
             {
-                _lastSamplePeriod = samplePeriod;
+                cancellationToken.ThrowIfCancellationRequested();
 
-                var totalLength = filePeriod.Ticks / samplePeriod.Ticks;
-                var dx = samplePeriod.TotalSeconds;
-                var root = Context.ResourceLocator.ToPath();
-                var filePath = Path.Combine(root, $"{fileBegin:yyyy-MM-ddTHH-mm-ss}Z_{samplePeriod.ToUnitString()}.dat");
+                // file -> catalog
+                var catalog = catalogItemGroup.Key;
 
-                if (File.Exists(filePath))
-                    throw new Exception($"The file {filePath} already exists. Extending an already existing file with additional resources is not supported.");
-
-                var famosFile = new FamosFileHeader();
-
-                // file
-                var metadataGroup = new FamosFileGroup("Metadata")
+                var catalogGroup = new FamosFileGroup(catalog.Id)
                 {
-                    PropertyInfo = new FamosFilePropertyInfo(new List<FamosFileProperty>()
-                {
-                    new FamosFileProperty("system_name", "Nexus"),
-                    new FamosFileProperty("date_time", fileBegin.ToString("yyyy-MM-ddTHH-mm-ss") + "Z"),
-                    new FamosFileProperty("sample_period", samplePeriod.ToUnitString()),
-                })
+                    PropertyInfo = new FamosFilePropertyInfo()
                 };
 
-                famosFile.Groups.Add(metadataGroup);
-
-                var field = new FamosFileField(FamosFileFieldType.MultipleYToSingleEquidistantTime);
-
-                foreach (var catalogItemGroup in catalogItems.GroupBy(catalogItem => catalogItem.Catalog))
+                if (catalog.Properties is not null)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    // file -> catalog
-                    var catalog = catalogItemGroup.Key;
-
-                    var catalogGroup = new FamosFileGroup(catalog.Id)
-                    {
-                        PropertyInfo = new FamosFilePropertyInfo()
-                    };
-
-                    if (catalog.Properties is not null)
-                    {
-                        var key = "properties";
-                        var value = JsonSerializer.Serialize(catalog.Properties, _serializerOptions);
-                        catalogGroup.PropertyInfo.Properties.Add(new FamosFileProperty(key, value));
-                    }
-
-                    famosFile.Groups.Add(catalogGroup);
-
-                    if (totalLength * (double)SizeOf(NexusDataType.FLOAT64) > 2 * Math.Pow(10, 9))
-                        throw new Exception(ErrorMessage.FamosWriter_DataSizeExceedsLimit);
-
-                    // file -> catalog -> resources
-                    foreach (var catalogItem in catalogItemGroup)
-                    {
-                        var channel = PrepareChannel(field, catalogItem, (int)totalLength, fileBegin, dx);
-                        catalogGroup.Channels.Add(channel);
-                    }
+                    var key = "properties";
+                    var value = JsonSerializer.Serialize(catalog.Properties, _serializerOptions);
+                    catalogGroup.PropertyInfo.Properties.Add(new FamosFileProperty(key, value));
                 }
 
-                famosFile.Fields.Add(field);
+                famosFile.Groups.Add(catalogGroup);
 
-                //
-                famosFile.Save(filePath, _ => { });
-                _famosFile = FamosFile.OpenEditable(filePath);
-            }, cancellationToken);
-        }
+                if (totalLength * (double)SizeOf(NexusDataType.FLOAT64) > 2 * Math.Pow(10, 9))
+                    throw new Exception(ErrorMessage.FamosWriter_DataSizeExceedsLimit);
 
-        public Task WriteAsync(
-            TimeSpan fileOffset,
-            WriteRequest[] requests,
-            IProgress<double> progress,
-            CancellationToken cancellationToken)
-        {
-            return Task.Run(() =>
-            {
-                var offset = fileOffset.Ticks / _lastSamplePeriod.Ticks;
-
-                var requestGroups = requests
-                    .GroupBy(request => request.CatalogItem.Catalog)
-                    .ToList();
-
-                var processed = 0;
-                var field = _famosFile.Fields.First();
-
-                _famosFile.Edit(writer =>
+                // file -> catalog -> resources
+                foreach (var catalogItem in catalogItemGroup)
                 {
-                    var absoluteIndex = 0;
+                    var channel = PrepareChannel(field, catalogItem, (int)totalLength, fileBegin, dx);
+                    catalogGroup.Channels.Add(channel);
+                }
+            }
 
-                    foreach (var requestGroup in requestGroups)
+            famosFile.Fields.Add(field);
+
+            //
+            famosFile.Save(filePath, _ => { });
+            _famosFile = FamosFile.OpenEditable(filePath);
+        }, cancellationToken);
+    }
+
+    public Task WriteAsync(
+        TimeSpan fileOffset,
+        WriteRequest[] requests,
+        IProgress<double> progress,
+        CancellationToken cancellationToken)
+    {
+        return Task.Run(() =>
+        {
+            var offset = fileOffset.Ticks / _lastSamplePeriod.Ticks;
+
+            var requestGroups = requests
+                .GroupBy(request => request.CatalogItem.Catalog)
+                .ToList();
+
+            var processed = 0;
+            var field = _famosFile.Fields.First();
+
+            _famosFile.Edit(writer =>
+            {
+                var absoluteIndex = 0;
+
+                foreach (var requestGroup in requestGroups)
+                {
+                    var catalog = requestGroup.Key;
+                    var writeRequests = requestGroup.ToArray();
+
+                    for (int i = 0; i < writeRequests.Length; i++)
                     {
-                        var catalog = requestGroup.Key;
-                        var writeRequests = requestGroup.ToArray();
+                        cancellationToken.ThrowIfCancellationRequested();
 
-                        for (int i = 0; i < writeRequests.Length; i++)
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
+                        var component = field.Components[absoluteIndex];
+                        var data = writeRequests[i].Data;
 
-                            var component = field.Components[absoluteIndex];
-                            var data = writeRequests[i].Data;
+                        _famosFile.WriteSingle(writer, component, (int)offset, data.Span);
 
-                            _famosFile.WriteSingle(writer, component, (int)offset, data.Span);
-
-                            absoluteIndex++;
-                        }
-
-                        processed++;
-                        progress.Report((double)processed / requests.Length);
+                        absoluteIndex++;
                     }
-                });
-            }, cancellationToken);
-        }
 
-        public Task CloseAsync(
-            CancellationToken cancellationToken)
+                    processed++;
+                    progress.Report((double)processed / requests.Length);
+                }
+            });
+        }, cancellationToken);
+    }
+
+    public Task CloseAsync(
+        CancellationToken cancellationToken)
+    {
+        _famosFile.Dispose();
+        return Task.CompletedTask;
+    }
+
+    private FamosFileChannel PrepareChannel(
+        FamosFileField field, 
+        CatalogItem catalogItem, 
+        int totalLength, 
+        DateTime startDateTme, 
+        double dx)
+    {
+        // component 
+        var representationName = $"{catalogItem.Resource.Id}_{catalogItem.Representation.Id}{GetRepresentationParameterString(catalogItem.Parameters)}";
+
+        var unit = string.Empty;
+
+        if (catalogItem.Resource.Properties is not null &&
+            catalogItem.Resource.Properties.TryGetValue("unit", out var unitElement) &&
+            unitElement.ValueKind == JsonValueKind.String)
         {
-            _famosFile.Dispose();
-            return Task.CompletedTask;
+            unit = unitElement.GetString() ?? string.Empty;
         }
 
-        private FamosFileChannel PrepareChannel(FamosFileField field, CatalogItem catalogItem, int totalLength, DateTime startDateTme, double dx)
+        var calibration = new FamosFileCalibration(false, 1, 0, false, unit);
+
+        var component = new FamosFileAnalogComponent(representationName, FamosFileDataType.Float64, totalLength, calibration)
         {
-            // component 
-            var representationName = $"{catalogItem.Resource.Id}_{catalogItem.Representation.Id}{GetRepresentationParameterString(catalogItem.Parameters)}";
+            XAxisScaling = new FamosFileXAxisScaling((decimal)dx) { Unit = "s" },
+            TriggerTime = new FamosFileTriggerTime(startDateTme, FamosFileTimeMode.Unknown),
+        };
 
-            var unit = string.Empty;
+        // attributes
+        var channel = component.Channels.First();
 
-            if (catalogItem.Resource.Properties is not null && 
-                catalogItem.Resource.Properties.TryGetValue("unit", out var unitElement) &&
-                unitElement.ValueKind == JsonValueKind.String)
-            {
-                unit = unitElement.GetString() ?? string.Empty;
-            }
+        channel.PropertyInfo = new FamosFilePropertyInfo();
 
-            var calibration = new FamosFileCalibration(false, 1, 0, false, unit);
+        var properties = catalogItem.Resource.Properties;
 
-            var component = new FamosFileAnalogComponent(representationName, FamosFileDataType.Float64, totalLength, calibration)
-            {
-                XAxisScaling = new FamosFileXAxisScaling((decimal)dx) { Unit = "s" },
-                TriggerTime = new FamosFileTriggerTime(startDateTme, FamosFileTimeMode.Unknown),
-            };
-
-            // attributes
-            var channel = component.Channels.First();
-
-            channel.PropertyInfo = new FamosFilePropertyInfo();
-
-            var properties = catalogItem.Resource.Properties;
-
-            if (properties is not null)
-            {
-                var key = "properties";
-                var value = JsonSerializer.Serialize(properties, _serializerOptions);
-                channel.PropertyInfo.Properties.Add(new FamosFileProperty(key, value));
-            }
-
-            field.Components.Add(component);
-
-            return channel;
-        }
-
-        private static string? GetRepresentationParameterString(IReadOnlyDictionary<string, string>? parameters)
+        if (properties is not null)
         {
-            if (parameters is null)
-                return default;
-            
-            var serializedParameters = parameters
-                .Select(parameter => $"{parameter.Key}={parameter.Value}");
-
-            var parametersString = $"({string.Join(',', serializedParameters)})";
-
-            return parametersString;
+            var key = "properties";
+            var value = JsonSerializer.Serialize(properties, _serializerOptions);
+            channel.PropertyInfo.Properties.Add(new FamosFileProperty(key, value));
         }
 
-        private static int SizeOf(NexusDataType dataType)
-        {
-            return ((ushort)dataType & 0x00FF) / 8;
-        }
+        field.Components.Add(component);
 
-        #endregion
+        return channel;
+    }
+
+    private static string? GetRepresentationParameterString(IReadOnlyDictionary<string, string>? parameters)
+    {
+        if (parameters is null)
+            return default;
+
+        var serializedParameters = parameters
+            .Select(parameter => $"{parameter.Key}={parameter.Value}");
+
+        var parametersString = $"({string.Join(',', serializedParameters)})";
+
+        return parametersString;
+    }
+
+    private static int SizeOf(NexusDataType dataType)
+    {
+        return ((ushort)dataType & 0x00FF) / 8;
     }
 }
