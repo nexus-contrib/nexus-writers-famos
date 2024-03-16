@@ -78,14 +78,15 @@ public class Famos : IDataWriter
 
             var field = new FamosFileField(FamosFileFieldType.MultipleYToSingleEquidistantTime);
 
-            foreach (var catalogItemGroup in catalogItems.GroupBy(catalogItem => catalogItem.Catalog))
+            foreach (var catalogItemGroup in catalogItems.GroupBy(catalogItem => catalogItem.Catalog.Id))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // file -> catalog
-                var catalog = catalogItemGroup.Key;
+                var catalogId = catalogItemGroup.Key;
+                var catalog = catalogItemGroup.First().Catalog;
 
-                var catalogGroup = new FamosFileGroup(catalog.Id)
+                var catalogGroup = new FamosFileGroup(catalogId)
                 {
                     PropertyInfo = new FamosFilePropertyInfo()
                 };
@@ -129,7 +130,7 @@ public class Famos : IDataWriter
             var offset = fileOffset.Ticks / _lastSamplePeriod.Ticks;
 
             var requestGroups = requests
-                .GroupBy(request => request.CatalogItem.Catalog)
+                .GroupBy(request => request.CatalogItem.Catalog.Id)
                 .ToList();
 
             var processed = 0;
@@ -141,7 +142,6 @@ public class Famos : IDataWriter
 
                 foreach (var requestGroup in requestGroups)
                 {
-                    var catalog = requestGroup.Key;
                     var writeRequests = requestGroup.ToArray();
 
                     for (int i = 0; i < writeRequests.Length; i++)
