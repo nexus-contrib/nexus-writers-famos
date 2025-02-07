@@ -19,7 +19,6 @@ public class FamosTests(DataWriterFixture fixture) : IClassFixture<DataWriterFix
 
         var context = new DataWriterContext(
             ResourceLocator: new Uri(targetFolder),
-            SystemConfiguration: default!,
             RequestConfiguration: default!);
 
         await dataWriter.SetContextAsync(context, NullLogger.Instance, CancellationToken.None);
@@ -68,7 +67,7 @@ public class FamosTests(DataWriterFixture fixture) : IClassFixture<DataWriterFix
             .ToArray();
 
         // assert
-        Assert.Equal(1, actualFilePaths.Length);
+        Assert.Single(actualFilePaths);
 
         using var famosFile = FamosFile.Open(actualFilePaths.First());
 
