@@ -100,7 +100,7 @@ public class Famos : IDataWriter
 
                 famosFile.Groups.Add(catalogGroup);
 
-                if (totalLength * (double)SizeOf(NexusDataType.FLOAT64) > 2 * Math.Pow(10, 9))
+                if (totalLength * (double)SizeOf(Context.Precision) > 2 * Math.Pow(10, 9))
                     throw new Exception(ErrorMessage.FamosWriter_DataSizeExceedsLimit);
 
                 // file -> catalog -> resources
@@ -191,7 +191,7 @@ public class Famos : IDataWriter
 
         var calibration = new FamosFileCalibration(false, 1, 0, false, unit);
 
-        var component = new FamosFileAnalogComponent(representationName, FamosFileDataType.Float64, totalLength, calibration)
+        var component = new FamosFileAnalogComponent(representationName, GetFamosFileDataType(Context.Precision), totalLength, calibration)
         {
             XAxisScaling = new FamosFileXAxisScaling((decimal)dx) { Unit = "s" },
             TriggerTime = new FamosFileTriggerTime(startDateTme, FamosFileTimeMode.Unknown),
@@ -229,8 +229,23 @@ public class Famos : IDataWriter
         return parametersString;
     }
 
-    private static int SizeOf(NexusDataType dataType)
+    private static FamosFileDataType GetFamosFileDataType(Precision precision)
     {
-        return ((ushort)dataType & 0x00FF) / 8;
+        return precision switch
+        {
+            Precision.Float32 => FamosFileDataType.Float32,
+            Precision.Float64 => FamosFileDataType.Float64,
+            _ => throw new NotSupportedException($"The precision {precision} is not supported.")
+        };
+    }
+
+    private static int SizeOf(Precision precision)
+    {
+        return precision switch
+        {
+            Precision.Float32 => sizeof(float),
+            Precision.Float64 => sizeof(double),
+            _ => throw new NotSupportedException($"The precision {precision} is not supported.")
+        };
     }
 }

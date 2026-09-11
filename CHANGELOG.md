@@ -1,3 +1,8 @@
+## v2.0.0-beta.38 - 2026-09-11
+
+- Follow Nexus changes.
+- Support writing Float32 and Float64 data based on precision.
+
 ## v2.0.0-beta.37 - 2025-05-22
 
 - Follow ImcFamosFile changes

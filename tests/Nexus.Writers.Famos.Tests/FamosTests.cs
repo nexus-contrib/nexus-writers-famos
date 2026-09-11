@@ -2,6 +2,7 @@ using ImcFamosFile;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nexus.DataModel;
 using Nexus.Extensibility;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using Xunit;
 
@@ -11,14 +12,17 @@ public class FamosTests(DataWriterFixture fixture) : IClassFixture<DataWriterFix
 {
     private readonly DataWriterFixture _fixture = fixture;
 
-    [Fact]
-    public async Task CanWriteFiles()
+    [Theory]
+    [InlineData(Precision.Float32)]
+    [InlineData(Precision.Float64)]
+    public async Task CanWriteFiles(Precision precision)
     {
         var targetFolder = _fixture.GetTargetFolder();
         var dataWriter = new Famos() as IDataWriter;
 
         var context = new DataWriterContext(
             ResourceLocator: new Uri(targetFolder),
+            Precision: precision,
             RequestConfiguration: default!);
 
         await dataWriter.SetContextAsync(context, NullLogger.Instance, CancellationToken.None);
@@ -52,9 +56,7 @@ public class FamosTests(DataWriterFixture fixture) : IClassFixture<DataWriterFix
                 .ToArray()
         };
 
-        var requests = catalogItems
-            .Select((catalogItem, i) => new WriteRequest(catalogItem, data[i]))
-            .ToArray();
+        var requests = CreateRequests(catalogItems, data, precision);
 
         await dataWriter.OpenAsync(begin, TimeSpan.FromSeconds(2000), samplePeriod, catalogItems, CancellationToken.None);
         await dataWriter.WriteAsync(TimeSpan.Zero, requests, new Progress<double>(), CancellationToken.None);
@@ -98,6 +100,22 @@ public class FamosTests(DataWriterFixture fixture) : IClassFixture<DataWriterFix
             var expectedAsString = JsonSerializer.Serialize(expected, new JsonSerializerOptions { WriteIndented = true });
             Assert.Single(actual);
             Assert.Equal(expectedAsString, actual[0].Value);
+        }
+
+        static WriteRequest[] CreateRequests(CatalogItem[] catalogItems, double[][] data, Precision precision)
+        {
+            return precision switch
+            {
+                Precision.Float32 => catalogItems
+                    .Select((catalogItem, i) => new WriteRequest(catalogItem, MemoryMarshal.Cast<float, byte>(data[i].Select(value => (float)value).ToArray()).ToArray()))
+                    .ToArray(),
+
+                Precision.Float64 => catalogItems
+                    .Select((catalogItem, i) => new WriteRequest(catalogItem, MemoryMarshal.Cast<double, byte>(data[i]).ToArray()))
+                    .ToArray(),
+
+                _ => throw new NotSupportedException($"The precision {precision} is not supported.")
+            };
         }
     }
 }
