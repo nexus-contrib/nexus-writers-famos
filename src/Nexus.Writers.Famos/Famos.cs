@@ -100,7 +100,7 @@ public class Famos : IDataWriter
 
                 famosFile.Groups.Add(catalogGroup);
 
-                if (totalLength * (double)SizeOf(Context.Precision) > 2 * Math.Pow(10, 9))
+                if (totalLength * (double)Context.Precision > 2 * Math.Pow(10, 9))
                     throw new Exception(ErrorMessage.FamosWriter_DataSizeExceedsLimit);
 
                 // file -> catalog -> resources
@@ -239,13 +239,4 @@ public class Famos : IDataWriter
         };
     }
 
-    private static int SizeOf(Precision precision)
-    {
-        return precision switch
-        {
-            Precision.Float32 => sizeof(float),
-            Precision.Float64 => sizeof(double),
-            _ => throw new NotSupportedException($"The precision {precision} is not supported.")
-        };
-    }
 }
